@@ -500,6 +500,18 @@ void XimeaROSCam::openCam() {
     // Compute available bandwidth for this camera
     int avail_bw = 0;           // Mbits per second
     xi_stat = xiGetParamInt(this->xi_h_, XI_PRM_AVAILABLE_BANDWIDTH, &avail_bw);
+    int bw_max = 0, bw_min = 0;
+    xi_stat = xiGetParamInt(this->xi_h_,
+                              XI_PRM_LIMIT_BANDWIDTH XI_PRM_INFO_MIN,
+                              &bw_min);
+    xi_stat = xiGetParamInt(this->xi_h_,
+                              XI_PRM_LIMIT_BANDWIDTH XI_PRM_INFO_MAX,
+                              &bw_max);
+
+    ROS_INFO_STREAM("Limiting bandwidth...");
+    ROS_INFO_STREAM("Available bandwidth: " << avail_bw);
+    ROS_INFO_STREAM("Min bandwidth: " << bw_min);
+    ROS_INFO_STREAM("Max bandwidth: " << bw_max);
 
     // If we have more than one camera per bus/controller, we divide the
     // available bw to accomodate for the same amount of cameras
