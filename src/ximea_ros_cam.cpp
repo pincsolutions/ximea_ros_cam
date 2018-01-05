@@ -575,7 +575,7 @@ void XimeaROSCam::frameCaptureCb() {
     ros::Time timestamp;
     std::string time_str;
 
-    ROS_INFO_THROTTLE(1, "Capture CB Looping...");
+    //ROS_INFO_THROTTLE(1, "Capture CB Looping...");
 
     xi_img.size = sizeof(XI_IMG);
     xi_img.bp = NULL;
@@ -583,7 +583,7 @@ void XimeaROSCam::frameCaptureCb() {
 
     // Acquisition started
     if (this->is_active_) {
-        ROS_INFO("Capturing image...");
+        //ROS_INFO("Capturing image...");
 
         // Acquire image
         xi_stat = xiGetImage(this->xi_h_,
@@ -596,10 +596,10 @@ void XimeaROSCam::frameCaptureCb() {
 
         // Was the image retrieval successful?
         if (xi_stat == XI_OK) {
-            ROS_INFO_STREAM("Image captured... width: "
-                            << xi_img.width
-                            << " and height: "
-                            << xi_img.height);
+            //ROS_INFO_STREAM("Image captured... width: "
+            //                << xi_img.width
+            //                << " and height: "
+            //                << xi_img.height);
             // Setup image
             img_buffer = reinterpret_cast<char *>(xi_img.bp);
             img_buf_size = xi_img.width * xi_img.height
