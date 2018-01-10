@@ -36,8 +36,8 @@ std::map<std::string, std::string> XimeaROSCam::ImgEncodingMap = {
 // -- 0 = MQ013CG-E2   -- //
 // --                  -- //
 
-std::map<int, int> XimeaROSCam::CamMaxPixelWidth = { {0, 1280} };
-std::map<int, int> XimeaROSCam::CamMaxPixelHeight = { {0, 1024} };
+std::map<int, int> XimeaROSCam::CamMaxPixelWidth = { {0, 4112} };
+std::map<int, int> XimeaROSCam::CamMaxPixelHeight = { {0, 2176} };
 
 XimeaROSCam::XimeaROSCam() {
     this->img_count_ = 0;                   // assume 0 images published

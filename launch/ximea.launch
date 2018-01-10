@@ -1,6 +1,6 @@
 <launch>
   <arg name="cam_ser" default="COCAU1713002" />
-  <arg name="ximea_color_mode" default="rgb" />
+  <arg name="ximea_color_mode" default="bw" />
   <node pkg="ximea_ros_cam" type="ximea_ros_cam_node" name="ximea" output="screen">
     <param name="serial_no"       type="string" value="$(arg cam_ser)" />
     <param name="cam_name"        type="string" value="ximea" />
@@ -9,6 +9,6 @@
     <param name="num_cams_in_bus" type="int"    value="1"        />
     <param name="bw_safetyratio"  type="double" value="1.0"      />
     <param name="publish_xi_image_info" type="bool" value="true"/>
-     <rosparam command="load" file="$(find visim)/launch/cameras/ximea_$(arg ximea_color_mode).yaml" />
+     <rosparam command="load" file="$(find ximea_ros_cam)/config/ximea_$(arg ximea_color_mode).yaml" />
   </node>
 </launch>
