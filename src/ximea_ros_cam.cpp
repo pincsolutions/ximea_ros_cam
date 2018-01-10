@@ -453,7 +453,7 @@ void XimeaROSCam::openCam() {
                         this->cam_autotime_limit_ << " GAIN LIMIT: " <<
                         this->cam_autogain_limit_ << " AUTO PRIORITY: " <<
                         this->cam_autoexposure_priority_ << " AUTO LEVEL: " <<
-                        this->cam_autolevel_
+                        this->cam_autolevel_);
         xi_stat = xiSetParamInt(this->xi_h_,
                                 XI_PRM_AEAG,
                                 1);
