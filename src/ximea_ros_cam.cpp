@@ -270,6 +270,9 @@ void XimeaROSCam::initCam() {
     this->private_nh_.param( "auto_gain_limit",
         this->cam_autogain_limit_, -1.0f);
     ROS_INFO_STREAM("cam_autogain_limit_: " << this->cam_autogain_limit_);
+    this->private_nh_.param( "auto_level",
+        this->cam_autolevel_, -1.0f);
+    ROS_INFO_STREAM("cam_autolevel_: " << this->cam_autolevel_);
 
     //      -- apply white balance parameters --
     this->private_nh_.param( "white_balance_mode",
@@ -449,8 +452,8 @@ void XimeaROSCam::openCam() {
         ROS_INFO_STREAM("Setting auto exposure: EXPOSURE TIME LIMIT: " <<
                         this->cam_autotime_limit_ << " GAIN LIMIT: " <<
                         this->cam_autogain_limit_ << " AUTO PRIORITY: " <<
-                        this->cam_autoexposure_priority_);
-        // auto exposure
+                        this->cam_autoexposure_priority_ << " AUTO LEVEL: " <<
+                        this->cam_autolevel_
         xi_stat = xiSetParamInt(this->xi_h_,
                                 XI_PRM_AEAG,
                                 1);
@@ -466,6 +469,10 @@ void XimeaROSCam::openCam() {
         xi_stat = xiSetParamFloat(this->xi_h_,
                                   XI_PRM_AG_MAX_LIMIT,
                                   this->cam_autogain_limit_);
+        // auto exposure gain limit
+        xi_stat = xiSetParamFloat(this->xi_h_,
+                                  XI_PRM_AEAG_LEVEL,
+                                  this->cam_autolevel_);
     }
 
 
