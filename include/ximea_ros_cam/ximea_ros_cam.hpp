@@ -135,6 +135,7 @@ class XimeaROSCam : public nodelet::Nodelet {
     int cam_autotime_limit_;
     float cam_autoexposure_priority_;
     float cam_autogain_limit_;
+    float cam_autolevel_;
     bool cam_binning_en_;
     int cam_downsample_factor_;
     int cam_roi_left_;
