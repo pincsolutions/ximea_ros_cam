@@ -246,7 +246,7 @@ void XimeaROSCam::initCam() {
 
     //      -- apply framerate (software cap) parameters --
     this->private_nh_.param( "frame_rate_control",
-        this->cam_framerate_control_, false);
+        this->cam_framerate_control_, true);
     ROS_INFO_STREAM("cam_framerate_control_: " << this->cam_framerate_control_);
     this->private_nh_.param("frame_rate_set", this->cam_framerate_set_, -1.0f);
     ROS_INFO_STREAM("cam_framerate_set_: " << this->cam_framerate_set_);
@@ -541,11 +541,11 @@ void XimeaROSCam::openCam() {
             xi_stat = xiSetParamFloat(this->xi_h_,
                                       XI_PRM_FRAMERATE,
                                       this->cam_framerate_set_);
-        } else {
-            // default to free run
-            xi_stat = xiSetParamInt(this->xi_h_,
-                                    XI_PRM_ACQ_TIMING_MODE,
-                                    XI_ACQ_TIMING_MODE_FREE_RUN);
+        //} else {
+        //    // default to free run
+        //    xi_stat = xiSetParamInt(this->xi_h_,
+        //                            XI_PRM_ACQ_TIMING_MODE,
+        //                            XI_ACQ_TIMING_MODE_FREE_RUN);
         }
     }
 
