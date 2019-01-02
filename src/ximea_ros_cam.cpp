@@ -39,19 +39,22 @@ std::map<std::string, std::string> XimeaROSCam::ImgEncodingMap = {
 std::map<int, int> XimeaROSCam::CamMaxPixelWidth = { {0, 4112} };
 std::map<int, int> XimeaROSCam::CamMaxPixelHeight = { {0, 2176} };
 
-XimeaROSCam::XimeaROSCam() {
+XimeaROSCam::XimeaROSCam() : diag_updater{} {
     this->img_count_ = 0;                   // assume 0 images published
-    this->cam_framerate_control_ = true;
+    this->cam_framerate_control_ = false;
     this->cam_white_balance_mode_ = 0;
     this->cam_trigger_mode_ = 0;
     this->is_active_ = false;
     this->xi_h_ = NULL;
+    this->cam_info_loaded_ = false;
+    this->age_min = 0.0;
 }
 
 XimeaROSCam::~XimeaROSCam() {
     // Init variables
     XI_RETURN xi_stat;
 
+    ROS_INFO("Shutting down ximea_ros_cam node...");
     // Stop acquisition and close device if handle is available
     if (this->xi_h_ != NULL) {
         // Stop image acquisition
@@ -61,7 +64,10 @@ XimeaROSCam::~XimeaROSCam() {
         // Close camera device
         xiCloseDevice(this->xi_h_);
         this->xi_h_ = NULL;
+
+        ROS_INFO_STREAM("Closed device: " << this->cam_serialno_);
     }
+    ROS_INFO("ximea_ros_cam node shutdown complete.");
 
     // To avoid warnings
     (void)xi_stat;
@@ -71,14 +77,16 @@ XimeaROSCam::~XimeaROSCam() {
 // onInit() - on the initialization of the nodelet (not the class)
 void XimeaROSCam::onInit() {
     // Report start of function
-    NODELET_INFO("Initializing Nodelet ... ");
+    ROS_INFO("Initializing Nodelet ... ");
 
     // Execute initialization functions
     this->initNodeHandles();
 
     // Camera initialization
     this->initCam();
-    this->openCam();
+
+    // Diagnostics
+    this->initDiagnostics();
 
     // Publishers and Subscriptions
     this->initPubs();
@@ -90,26 +98,45 @@ void XimeaROSCam::onInit() {
     this->initStorage();
 
     // Report end of function
-    NODELET_INFO("... Nodelet Initialized. Waiting for Input...");
+    ROS_INFO("... Nodelet Initialized. Waiting for Input...");
 }
 
 // initNodeHandles() - initialize the private/public node handles
 void XimeaROSCam::initNodeHandles() {
     // Report start of function
-    NODELET_INFO("Loading Node Handles ... ");
+    ROS_INFO("Loading Node Handles ... ");
 
     // get public/private node handle
     this->public_nh_ = this->getNodeHandle();
     this->private_nh_ = this->getPrivateNodeHandle();
 
     // Report end of function
-    NODELET_INFO("... Node Handles Loaded. ");
+    ROS_INFO("... Node Handles Loaded. ");
+}
+
+void XimeaROSCam::initDiagnostics() {
+    if (this->enable_diagnostics) {
+        this->frequency_min =
+            this->pub_frequency - this->pub_frequency_tolerance;
+        this->frequency_max =
+            this->pub_frequency + this->pub_frequency_tolerance;
+        this->diag_updater.setHardwareID(this->cam_name_);
+        this->cam_pub_diag =
+            std::make_shared<diagnostic_updater::TopicDiagnostic>(
+                ros::this_node::getNamespace() + "/image_raw",
+                this->diag_updater,
+                diagnostic_updater::FrequencyStatusParam(
+                    &this->frequency_min, &this->frequency_max,
+                    0.0, 20),
+                diagnostic_updater::TimeStampStatusParam(
+                    this->age_min, this->age_max));
+    }
 }
 
 // initPubs() - initialize the publishers
 void XimeaROSCam::initPubs() {
     // Report start of function
-    NODELET_INFO("Loading Publishers ... ");
+    ROS_INFO("Loading Publishers ... ");
 
     this->cam_img_counter_pub_ = this->private_nh_.advertise<std_msgs::UInt32>(
             "image_count", 0);
@@ -126,26 +153,33 @@ void XimeaROSCam::initPubs() {
     }
 
     // Report end of function
-    NODELET_INFO("... Publishers Loaded. ");
+    ROS_INFO("... Publishers Loaded. ");
 }
 
 // initTimers() - initialize the timers
 void XimeaROSCam::initTimers() {
     // Report start of function
-    NODELET_INFO("Loading Timers ... ");
+    ROS_INFO("Loading Timers ... ");
+
+    // Load camera polling callback timer ((Ensure that with multiple cameras,
+    // each time is about 2 seconds spaced apart)
+    this->xi_open_device_cb_ =
+        this->private_nh_.createTimer(ros::Duration(this->poll_time_),
+        boost::bind(&XimeaROSCam::openDeviceCb, this));
+    ROS_INFO_STREAM("xi_open_device_cb_: " << this->xi_open_device_cb_);
 
     // Load camera frame capture callback timer
-    this->t_frame_cb_ = this->public_nh_.createTimer(ros::Duration(0),
+    this->t_frame_cb_ =
+        this->public_nh_.createTimer(ros::Duration(this->poll_time_frame_),
         boost::bind(&XimeaROSCam::frameCaptureCb, this));
     ROS_INFO_STREAM("t_frame_cb_: " << this->t_frame_cb_);
 
     // Report end of function
-    NODELET_INFO("... Timers Loaded.");
+    ROS_INFO("... Timers Loaded.");
 }
 
-
 void XimeaROSCam::initStorage() {
-    NODELET_INFO("Loading Image Storage ... ");
+    ROS_INFO("Loading Image Storage ... ");
 
     this->private_nh_.param<std::string>("image_directory",
                                         this->image_directory_,
@@ -183,7 +217,7 @@ void XimeaROSCam::initStorage() {
 
     this->save_trigger_ = false;
 
-    NODELET_INFO("Image Storage Loaded.");
+    ROS_INFO("Image Storage Loaded.");
 }
 
 void XimeaROSCam::initCam() {
@@ -206,6 +240,22 @@ void XimeaROSCam::initCam() {
     this->private_nh_.param( "calib_file", this->cam_calib_file_,
         std::string("INVALID"));
     ROS_INFO_STREAM("calibration file: " << this->cam_calib_file_);
+    this->private_nh_.param("poll_time", this->poll_time_, -1.0f);
+    ROS_INFO_STREAM("poll_time: " << this->poll_time_);
+    this->private_nh_.param("poll_time_frame", this->poll_time_frame_, 0.0f);
+    ROS_INFO_STREAM("poll_time_frame: " << this->poll_time_frame_);
+
+    // Diagnostics
+    this->private_nh_.param("enable_diagnostics", this->enable_diagnostics,
+        true);
+    ROS_INFO_STREAM("enable_diagnostics: " << this->enable_diagnostics);
+    this->private_nh_.param("pub_frequency", this->pub_frequency, 10.0);
+    ROS_INFO_STREAM("pub_frequency: " << this->pub_frequency);
+    this->private_nh_.param("pub_frequency_tolerance",
+        this->pub_frequency_tolerance, 0.3);
+    ROS_INFO_STREAM("pub_frequency_tolerance: " << this->pub_frequency_tolerance);
+    this->private_nh_.param("data_age_max", this->age_max, 0.1);
+    ROS_INFO_STREAM("data_age_max: " << this->age_max);
 
     //      -- apply compressed image parameters (from image_transport) --
     this->private_nh_.param( "image_transport_compressed_format",
@@ -246,9 +296,9 @@ void XimeaROSCam::initCam() {
 
     //      -- apply framerate (software cap) parameters --
     this->private_nh_.param( "frame_rate_control",
-        this->cam_framerate_control_, true);
+        this->cam_framerate_control_, false);
     ROS_INFO_STREAM("cam_framerate_control_: " << this->cam_framerate_control_);
-    this->private_nh_.param("frame_rate_set", this->cam_framerate_set_, -1.0f);
+    this->private_nh_.param("frame_rate_set", this->cam_framerate_set_, -1);
     ROS_INFO_STREAM("cam_framerate_set_: " << this->cam_framerate_set_);
     this->private_nh_.param( "img_capture_timeout",
         this->cam_img_cap_timeout_, -1);
@@ -318,31 +368,34 @@ void XimeaROSCam::initCam() {
     // Setup image transport (publishing) and camera info topics
     image_transport::ImageTransport it(this->private_nh_);
     this->cam_pub_ = it.advertise("image_raw", 1);
-    this->cam_info_pub_ =
-        this->private_nh_.advertise<sensor_msgs::CameraInfo>("camera_info", 1);
 
+    // only load and publish calib file if it isn't empty
+    // assume camera info is not loaded
     // Setup camera info manager for calibration
+    this->cam_info_loaded_ = false;
     this->cam_info_manager_ =
         boost::make_shared<camera_info_manager::CameraInfoManager>
                     (this->private_nh_, this->cam_name_);
-    this->cam_info_manager_->loadCameraInfo(this->cam_calib_file_);
+    if (this->cam_info_manager_->loadCameraInfo(this->cam_calib_file_)) {
+        this->cam_info_loaded_ = true;
+    }
+    // loaded camera info properly
+    if (this->cam_info_loaded_) {
+        // advertise
+        this->cam_info_pub_ =
+            this->private_nh_.advertise<sensor_msgs::CameraInfo>(
+                "camera_info", 1);
+    }
+
+    // Enable auto bandwidth calculation to ensure bandwidth limiting and
+    // framerate setting are supported
+    xiSetParamInt(0, XI_PRM_AUTO_BANDWIDTH_CALCULATION, XI_ON);
 }
 
 void XimeaROSCam::openCam() {
+
     // Init variables
     XI_RETURN xi_stat;
-
-
-    // Disable auto bandwidth calculation (before camera open)
-    // Do this if bandwidth limitation is required or desired
-    if (this->cam_num_in_bus_ > 1) {
-        xiSetParamInt(0, XI_PRM_AUTO_BANDWIDTH_CALCULATION, XI_OFF);
-    }
-
-    // Open camera
-    xi_stat = xiOpenDeviceBy(XI_OPEN_BY_SN,
-                             this->cam_serialno_.c_str(),
-                             &this->xi_h_);
 
     // leave if there isn't a valid handle
     if (this->xi_h_ == NULL) { return; }
@@ -387,11 +440,11 @@ void XimeaROSCam::openCam() {
     }
 
     // error handling
-    //TODO(Carlos) Add error handling for xi_stat
+    //TODO(carloswanguw) Add error handling for xi_stat
     // errorHandling(stat, "image_format");
 
     // //      -- Set image trigger mode --
-    //TODO(Carlos) Add hardware triggering mode here
+    //TODO(carloswanguw) Add hardware triggering mode here
     // // Setup trigger mode
     // xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_TRG_SOURCE, XI_TRG_SOFTWARE);
     // // If software trigger, this is to send a software trigger to the cam
@@ -399,7 +452,6 @@ void XimeaROSCam::openCam() {
     // errorHandling(xi_stat, "Error During triggering");
 
     // Camera hardware trigger mode enabled?
-    // TODO(jskhu): ximeaCam.setCamTriggerMode()
     if (this->cam_trigger_mode_ == 2) {
         if (this->cam_hw_trigger_edge_ == 0) {
             // Select trigger to be rising edge
@@ -515,9 +567,13 @@ void XimeaROSCam::openCam() {
     }
 
     // Set bandwidth limit for camera and apply a safety ratio
+    ROS_INFO_STREAM("Limiting bandwidth to: " <<  
+            (int)((float)avail_bw*this->cam_bw_safetyratio_) << " Mbits/sec");
     xi_stat = xiSetParamInt(this->xi_h_,
                             XI_PRM_LIMIT_BANDWIDTH,
                             (int)((float)avail_bw*this->cam_bw_safetyratio_));
+    xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_LIMIT_BANDWIDTH_MODE , XI_ON);
+
 
     //      -- Framerate control  --
     // For information purposes, obtain min and max calculated possible fps
@@ -536,16 +592,16 @@ void XimeaROSCam::openCam() {
 
             xi_stat = xiSetParamInt(this->xi_h_,
                                     XI_PRM_ACQ_TIMING_MODE,
-                                    XI_ACQ_TIMING_MODE_FRAME_RATE_LIMIT);
+                                    XI_ACQ_TIMING_MODE_FRAME_RATE);
             // Apply frame rate (we assume MQ camera here)
-            xi_stat = xiSetParamFloat(this->xi_h_,
+            xi_stat = xiSetParamInt(this->xi_h_,
                                       XI_PRM_FRAMERATE,
                                       this->cam_framerate_set_);
-        //} else {
-        //    // default to free run
-        //    xi_stat = xiSetParamInt(this->xi_h_,
-        //                            XI_PRM_ACQ_TIMING_MODE,
-        //                            XI_ACQ_TIMING_MODE_FREE_RUN);
+        } else {
+            // default to free run
+            xi_stat = xiSetParamInt(this->xi_h_,
+                                    XI_PRM_ACQ_TIMING_MODE,
+                                    XI_ACQ_TIMING_MODE_FREE_RUN);
         }
     }
 
@@ -572,6 +628,26 @@ void XimeaROSCam::openCam() {
     (void)xi_stat;
 }
 
+void XimeaROSCam::openDeviceCb() {
+    XI_RETURN xi_stat;
+
+    ROS_INFO_STREAM("Polling Ximea Cam. Serial #: " << this->cam_serialno_);
+
+    xi_stat = xiOpenDeviceBy(XI_OPEN_BY_SN,
+            this->cam_serialno_.c_str(),
+            &this->xi_h_);
+
+    if (xi_stat == XI_OK && this->xi_h_ != NULL) {
+        ROS_INFO_STREAM("Poll successful. Loading serial #: "
+                        << this->cam_serialno_);
+        this->xi_open_device_cb_.stop();
+        XimeaROSCam::openCam();
+    }
+
+    // To avoid warnings
+    (void)xi_stat;
+}
+
 // Start aquiring data
 void XimeaROSCam::frameCaptureCb() {
     // Init variables
@@ -582,16 +658,12 @@ void XimeaROSCam::frameCaptureCb() {
     ros::Time timestamp;
     std::string time_str;
 
-    //ROS_INFO_THROTTLE(1, "Capture CB Looping...");
-
     xi_img.size = sizeof(XI_IMG);
     xi_img.bp = NULL;
     xi_img.bp_size = 0;
 
     // Acquisition started
     if (this->is_active_) {
-        //ROS_INFO("Capturing image...");
-
         // Acquire image
         xi_stat = xiGetImage(this->xi_h_,
                              this->cam_img_cap_timeout_,
@@ -603,10 +675,13 @@ void XimeaROSCam::frameCaptureCb() {
 
         // Was the image retrieval successful?
         if (xi_stat == XI_OK) {
-            //ROS_INFO_STREAM("Image captured... width: "
-            //                << xi_img.width
-            //                << " and height: "
-            //                << xi_img.height);
+            ROS_INFO_STREAM_THROTTLE(3,
+                "Capturing image from Ximea camera serial no: "
+                << this->cam_serialno_
+                << ". WxH: "
+                << xi_img.width
+                << " x "
+                << xi_img.height << ".");
             // Setup image
             img_buffer = reinterpret_cast<char *>(xi_img.bp);
             img_buf_size = xi_img.width * xi_img.height
@@ -637,17 +712,25 @@ void XimeaROSCam::frameCaptureCb() {
                                        xi_img.width,
                                        xi_img.width * this->cam_bytesperpixel_,
                                        img_buffer);
+                img.header.frame_id = this->cam_frameid_;
                 img.header.stamp = timestamp;
 
                 // Publish image
                 this->cam_pub_.publish(img);
+                if (this->enable_diagnostics) {
+                    cam_pub_diag->tick(timestamp);
+                    diag_updater.update();
+                }
 
-                // Publish camera calibration info
-                sensor_msgs::CameraInfo cam_info =
-                    this->cam_info_manager_->getCameraInfo();
-                    // reset frame id
-                cam_info.header.frame_id = this->cam_frameid_;
-                this->cam_info_pub_.publish(cam_info);
+                // Publish camera calibration info if camera info is loaded
+                if (this->cam_info_loaded_) {
+                    sensor_msgs::CameraInfo cam_info =
+                        this->cam_info_manager_->getCameraInfo();
+                        // reset frame id
+                    cam_info.header.frame_id = this->cam_frameid_;
+                    cam_info.header.stamp = timestamp;
+                    this->cam_info_pub_.publish(cam_info);
+                }
 
                 // Publish image counter
                 // Note that header.seq does this, but it is depreciated and
@@ -683,10 +766,14 @@ void XimeaROSCam::frameCaptureCb() {
                 }
             }
         }
+        else {
+
+        }
 
         // If active, publish xiGetImage info to ROS message
         if(this->publish_xi_image_info_) {
           ximea_ros_cam::XiImageInfo xiImageInfoMsg;
+          xiImageInfoMsg.header.frame_id = this->cam_frameid_;
           xiImageInfoMsg.header.stamp = timestamp;
           xiImageInfoMsg.size = xi_img.size;
           xiImageInfoMsg.bp_size = xi_img.bp_size;

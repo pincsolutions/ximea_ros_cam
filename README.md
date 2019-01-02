@@ -1,5 +1,13 @@
 # ximea_ros_cam
 
+# Prerequisites
+
+Tested on:
+
+* Ximea USB 3.0 MQ013CG-E2
+
+**Make sure that the camera firmware (both CPU and FPGA) are updated to the latest stable firmware! See: https://www.ximea.com/support/wiki/allprod/XIMEA_Camera_Firmware_Command-Line_Update for more info**
+
 # Installing Ximea Camera Driver
 
 ## Install the Ximea Software Package
@@ -98,6 +106,8 @@ Copy the `example_cam.launch` and input another serial number to `serial_no` of 
 `num_cams_in_bus` - Number of USB cameras processed by a single USB controller (That is, if a hub has one controller and 4 ports, with 3 ports plugged with USB 3.0 cameras, then `num_cams_in_bus = 3`) (This will divide the total USB bandwidth by `num_cams_in_bus` to ensure equal bandwidth for each camera)
 
 `bw_safetyratio` - Bandwidth safety ratio, a multiplier to the bandwidth allocated for each camera
+
+`poll_time` - Used to set the duration (in seconds) which the camera is attempted to be opened again. When using multiple cameras, a duration of 2 seconds between each camera is recommended. (i.e. `poll_time=0.0` and `poll_time=2.0` for cameras 1 and 2).
 
 ### Image Saving
 
