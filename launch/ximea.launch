@@ -1,7 +1,7 @@
 <launch>
-  <arg name="cam_ser" default="COCAU1713002" />
-  <arg name="ximea_color_mode" default="rgb" />
-  <arg name="lens_make" default="8mm" />
+  <arg name="cam_ser" default="COMAU1710036" />
+  <arg name="ximea_color_mode" default="bw" />
+  <arg name="lens_make" default="computar_25_p5sp" />
   <node pkg="ximea_ros_cam" type="ximea_ros_cam_node" name="ximea" output="screen">
     <param name="serial_no"       type="string" value="$(arg cam_ser)" />
     <param name="cam_name"        type="string" value="ximea" />
