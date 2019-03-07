@@ -96,7 +96,6 @@ class XimeaROSCam : public nodelet::Nodelet {
      * Initialize image storage parameters.
      * Includes directory and compression parameters.
      */
-    void initStorage();
 
     // Camera params and Functions
     void initCam();
@@ -155,7 +154,7 @@ class XimeaROSCam : public nodelet::Nodelet {
     int cam_roi_width_;
     int cam_roi_height_;
     bool cam_framerate_control_;   // framerate control - enable or disable
-    int cam_framerate_set_;      // framerate control - setting fps
+    float cam_framerate_set_;      // framerate control - setting fps
     int cam_img_cap_timeout_;       // max time to wait for img
     // white balance mode: 0 - none, 1 - use coeffs, 2 = auto
     int cam_white_balance_mode_;
@@ -194,18 +193,9 @@ class XimeaROSCam : public nodelet::Nodelet {
     ros::Timer t_frame_cb_;
     void frameCaptureCb();
 
-    ros::Subscriber trigger_sub_;
-    void triggerCb(const std_msgs::Empty::ConstPtr& msg);
+
     std::string formatTimeString(boost::posix_time::ptime timestamp);
-    bool saveToDisk(char *img_buffer, int img_size, std::string filename);
-    bool saveOnTrigger( char *img_buffer, int img_h, int img_w,
-        std::string filename);
-    bool save_trigger_;
-    bool save_disk_;
     bool calib_mode_;
-    std::string image_directory_;
-    std::string png_path_;
-    std::string bin_path_;
 
     // NODELET HANDLES
     ros::NodeHandle public_nh_;
