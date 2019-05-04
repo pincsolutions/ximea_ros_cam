@@ -1,0 +1,54 @@
+####################
+# General Configuration Parameters Go Here!
+####################
+
+# directory to save images (make sure that directory exists and that it is an absolute path).
+image_directory: "/tmp"  # must be absolute path, not relative path (i.e. '~')
+
+# save images to the disk
+save_disk: false 
+
+# save images on trigger (calibration only)
+calib_mode: false
+
+####################
+# Camera Configuration Parameters Go Here!
+####################
+
+# image_transport compressed image parameters
+image_transport_compressed_format: "png" #was "png"
+image_transport_compressed_jpeg_quality: 100 #was 100
+image_transport_compressed_png_level: 0 #was 5
+
+# colour format
+format: "XI_MONO8"
+
+# triggering (0 - none, 1 - software trigger (NOT IMPLMENTED YET),
+# 2 - hardware trigger)
+cam_trigger_mode: 0
+hw_trigger_edge: 0            # if hw trigger, 0/1 = rising/falling edge trigger
+
+# for camera frame rate
+frame_rate_control: true      # enable or disable frame rate control
+                              # (works if no triggering is enabled)
+frame_rate_set: 8.0            # for trigger mode, fps limiter (0 for none)
+img_capture_timeout: 2000     # timeout in milliseconds for xiGetImage()
+
+# exposure settings
+auto_exposure: true          # auto exposure on or off
+exposure_time: 1000           # manual exposure time in microseconds
+manual_gain: 4.0                # manual exposure gain
+auto_exposure_priority: 0.2   # auto exposure to gain ratio (1 = use only exposure)
+auto_time_limit: 1500        # auto exposure time limit in microseconds
+auto_gain_limit: 12.0          # auto exposure gain limit
+auto_level: 18.5          # auto level
+
+
+#Sensor 4112x2176
+#Max ROI 4110x2174
+# region of interest
+# region of interest
+roi_left: 0                   # top left corner in pixels
+roi_top: 0
+roi_width: 4110               # width height in pixels
+roi_height: 2174
