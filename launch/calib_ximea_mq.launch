@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="image" default="image_raw"/>
+  <arg name="camera" default="ximea_MQ"/>
+
+  <include file="$(find ximea_ros_cam)/launch/ximea_mq.launch">
+  </include>
+
+  <node args="--size 8x6 --square 0.0449 --fix-principal-point --fix-aspect-ratio" name="camera_calibration" pkg="camera_calibration" type="cameracalibrator.py" output="screen">
+    <remap from="image" to="/$(arg camera)/$(arg image)"/>
+    <remap from="camera" to="/$(arg camera)"/>
+  </node>
+
+</launch>
