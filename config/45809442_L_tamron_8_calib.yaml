@@ -1,0 +1,20 @@
+image_width: 1280
+image_height: 1024
+camera_name: ximea_MQ
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [1498.46886767, 0, 640.0, 0, 1498.46886767, 512.0, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.24356933, 0.18680733, -0.000984, 0.00171833, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1437.06770833, 0, 641.647776, 0, 0, 1457.69453933, 511.426583, 0, 0, 0, 1, 0]
