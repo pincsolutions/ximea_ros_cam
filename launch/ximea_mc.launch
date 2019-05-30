@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
   <arg name="cam_ser" default="COCAU1713002" />
   <arg name="ximea_color_mode" default="RGB24" />

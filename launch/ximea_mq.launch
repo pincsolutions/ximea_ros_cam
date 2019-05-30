@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="rectify" default="false" />
+  <arg name="rectify" default="true" />
   <arg name="cam_ser" default="45809442" />  <!-- 45808342  -->
   <arg name="ximea_color_mode" default="RAW8" />
   <arg name="ximea_model" default="MQ" />
