@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="rectify" default="true" />
+  <arg name="cam_ser" default="45802542" />  <!-- 45808342  -->
+  <arg name="ximea_color_mode" default="RAW8" />
+  <arg name="ximea_model" default="MQ" />
+  <arg name="lens_make" default="tamron_8" />
+  <node pkg="ximea_ros_cam" type="ximea_ros_cam_node" name="ximea_$(arg ximea_model)" output="screen">
+    <param name="serial_no"       type="string" value="$(arg cam_ser)" />
+    <param name="cam_name"        type="string" value="ximea_$(arg ximea_model)" />
+    <param name="ximea_model"     type="string" value="$(arg ximea_model)" />
+    <param name="calib_file"      type="string" value="package://ximea_ros_cam/config/$(arg cam_ser)_L_$(arg lens_make)_calib.yaml" />
+    <param name="frame_id"        type="string" value="0"        />
+    <param name="num_cams_in_bus" type="int"    value="1"        />
+    <param name="bw_safetyratio"  type="double" value="1.0"      />
+    <param name="publish_xi_image_info" type="bool" value="true"/>
+    <rosparam command="load" file="$(find ximea_ros_cam)/config/ximea_$(arg ximea_model)_$(arg ximea_color_mode).yaml" />
+  </node>
+  <node if="$(arg rectify)" name="image_proc" pkg="image_proc" type="image_proc" ns="ximea_$(arg ximea_model)"/>
+</launch>

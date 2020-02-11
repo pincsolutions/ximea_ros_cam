@@ -185,6 +185,9 @@ void XimeaROSCam::initCam() {
     this->private_nh_.param( "cam_name", this->cam_name_,
         std::string("INVALID"));
     ROS_INFO_STREAM("cam_name: " << this->cam_name_);
+    this->private_nh_.param( "ximea_model", this->ximea_model_,
+        std::string("INVALID"));
+    ROS_INFO_STREAM("model: " << this->ximea_model_);
     //      -- apply camera specific parameters --
     this->private_nh_.param( "serial_no", this->cam_serialno_,
         std::string("INVALID"));
@@ -199,6 +202,7 @@ void XimeaROSCam::initCam() {
     ROS_INFO_STREAM("poll_time: " << this->poll_time_);
     this->private_nh_.param("poll_time_frame", this->poll_time_frame_, 0.0f);
     ROS_INFO_STREAM("poll_time_frame: " << this->poll_time_frame_);
+
 
     // Diagnostics
     this->private_nh_.param("enable_diagnostics", this->enable_diagnostics,
@@ -496,10 +500,18 @@ void XimeaROSCam::openCam() {
     if (this->cam_framerate_control_) {
         ROS_INFO_STREAM("Setting frame rate control to: " <<
                     this->cam_framerate_set_ << " Hz");
-
-        xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_ACQ_TIMING_MODE, XI_ACQ_TIMING_MODE_FRAME_RATE_LIMIT);
-    
-        xi_stat = xiSetParamFloat(this->xi_h_, XI_PRM_FRAMERATE, this->cam_framerate_set_);
+        if (this->ximea_model_ == ximea_model_mq_){
+            xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_ACQ_TIMING_MODE, XI_ACQ_TIMING_MODE_FRAME_RATE);
+            xi_stat = xiSetParamFloat(this->xi_h_, XI_PRM_FRAMERATE, this->cam_framerate_set_);
+            ROS_INFO_STREAM("Frame rate set to: " <<
+                    this->cam_framerate_set_ << " Hz");
+        }
+        if (this->ximea_model_ == ximea_model_mc_){
+            xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_ACQ_TIMING_MODE, XI_ACQ_TIMING_MODE_FRAME_RATE_LIMIT);
+            xi_stat = xiSetParamFloat(this->xi_h_, XI_PRM_FRAMERATE, this->cam_framerate_set_);
+            ROS_INFO_STREAM("Frame rate set to: " <<
+                    this->cam_framerate_set_ << " Hz");
+        }
     }
 
     //      -- Start camera acquisition --

@@ -128,6 +128,9 @@ class XimeaROSCam : public nodelet::Nodelet {
     int cam_compressed_png_level_;           // 1-9 (9 = max compression)
     // camera
     std::string cam_name_;                   // Main topic name for cam
+    std::string ximea_model_;
+    std::string ximea_model_mq_ = "MQ";
+    std::string ximea_model_mc_ = "MC";
     std::string cam_format_;                 // Camera image format
     int cam_format_int_;                     // Camera image format int val
     std::string cam_encoding_;               // Camera image encoding
