@@ -1,5 +1,5 @@
 <launch>
-  <arg name="cam_ser" default="COCAU1713002" />
+  <arg name="cam_ser" default="COMAU1707007" />
   <arg name="ximea_color_mode" default="MONO8" />
   <arg name="ximea_model" default="MC" />
   <arg name="lens_make" default="ricoh_8" />
